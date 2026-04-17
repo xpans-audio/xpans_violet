@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = [
+    "extensions/violet_audio_decoder",
+    "extensions/violet_audio_encoder",
+    "extensions/violet_config",
+    "extensions/violet_interpolation",
+    "extensions/violet_spatial_decoder",
+    "violet_core",
+    "xpans_violet"
+]

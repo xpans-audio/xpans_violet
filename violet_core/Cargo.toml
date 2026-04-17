@@ -1,0 +1,15 @@
+[package]
+name = "violet_core"
+version = "0.1.0"
+edition = "2024"
+description = "The core crate of xpans Violet. Used by extensions for Violet and Violet itself."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/xpans-audio/xpans_violet.git"
+authors = ["Ben Seigler"]
+
+[dependencies]
+num = "0.4.3"
+xpans_render = "0.1.0"
+xpans = "0.1.0"
+xpans_spe = "0.1.0"

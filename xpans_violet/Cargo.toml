@@ -1,0 +1,27 @@
+[package]
+name = "xpans_violet"
+edition = "2024"
+version = "0.1.0"
+description = "A spatial audio rendering engine for the xpans Ecosystem"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/xpans-audio/xpans_violet.git"
+authors = ["Ben Seigler"]
+
+[dependencies]
+violet_core = { version = "0.1.0", path = "../violet_core" }
+
+violet_audio_decoder = { version = "0.1.0", path = "../extensions/violet_audio_decoder", optional = true }
+violet_audio_encoder = { version = "0.1.0", path = "../extensions/violet_audio_encoder", optional = true }
+violet_config = { version = "0.1.0", path = "../extensions/violet_config", optional = true }
+violet_interpolation = { version = "0.1.0", path = "../extensions/violet_interpolation", optional = true }
+violet_spatial_decoder = { version = "0.1.0", path = "../extensions/violet_spatial_decoder", optional = true }
+
+
+[features]
+default = ["audio_decoder", "audio_encoder", "interpolation", "spatial_decoder", "config"]
+audio_decoder = ["dep:violet_audio_decoder"]
+audio_encoder = ["dep:violet_audio_encoder"]
+config = ["dep:violet_config"]
+interpolation = ["dep:violet_interpolation"]
+spatial_decoder = ["dep:violet_spatial_decoder"]

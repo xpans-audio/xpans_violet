@@ -1,0 +1,18 @@
+[package]
+name = "violet_config"
+version = "0.1.0"
+edition = "2024"
+description = "Generates source interpreters and sample processors from render configurations in xpans Violet."
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/xpans-audio/xpans_violet.git"
+authors = ["Ben Seigler"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+violet_core = { version = "0.1.0", path = "../../violet_core" }
+xpans_headphones = "0.1.0"
+xpans_stereo = "0.1.0"
+xpans_mono = "0.1.0"
+xpans_renderconfig = "0.1.0"
+xpans_common_lr = "0.1.0"

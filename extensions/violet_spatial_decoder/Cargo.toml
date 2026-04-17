@@ -1,0 +1,14 @@
+[package]
+name = "violet_spatial_decoder"
+version = "0.1.0"
+edition = "2024"
+description = "Adds a spatial decoder input to xpans Violet"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/xpans-audio/xpans_violet.git"
+authors = ["Ben Seigler"]
+
+[dependencies]
+violet_core = { version = "0.1.0", path = "../../violet_core" }
+wreath = "0.1.0"
+xpans_xsr = "0.1.0"
