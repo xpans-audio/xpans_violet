@@ -5,6 +5,7 @@ edition = "2024"
 description = "Adds an audio encoder output to xpans Violet"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
+homepage = "https://xpans.audio"
 repository = "https://github.com/xpans-audio/xpans_violet.git"
 authors = ["Ben Seigler"]
 
