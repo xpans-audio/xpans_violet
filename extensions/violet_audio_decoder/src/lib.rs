@@ -9,34 +9,20 @@ Symphonia as well.
 ## Example
 ```rust, no_run
 use std::fs::File;
-use violet_audio_decoder::AudioDecoderInfo;
+use violet_audio_decoder::AudioDecoder;
 
+// Open the audio file:
 let file = File::open("audio.wav").unwrap();
-let decoder_info = AudioDecoderInfo::new(file);
 
-// The amount of samples the audio buffer will retain (i.e. for delayed samples)
-let read_capacity = 64;
-
-// The amount of samples the decoder process will be able to write ahead of the
-// renderer.
-let write_capacity = 64;
-
-let (audio_decoder, audio_decoder_task) =
-    decoder_info.into_pair::<f32>(read_capacity, write_capacity);
-
-// Run the decoder process on a new thread.
-// We use closures that always return false, so this process will not be
-// pausable or cancelable.
-audio_decoder_task.spawn_and_run(8, || false, || false);
+// Create an audio decoder that decodes to `f32` samples:
+let audio_decoder = AudioDecoder::<f32>::new(file);
 
 // You would then use `audio_decoder` as the audio input for the renderer.
 ```
 */
 
-use std::thread::JoinHandle;
-
 use symphonia::core::{
-    audio::Signal,
+    audio::{AudioBuffer, Signal},
     codecs::{Decoder, DecoderOptions},
     conv::FromSample,
     formats::{FormatOptions, FormatReader},
@@ -45,29 +31,26 @@ use symphonia::core::{
     probe::Hint,
     sample::{Sample, i24, u24},
 };
-use wreath::{MultiRingReader, MultiRingWriter, Reader, Writer, multi_ring_buf};
 
-use violet_core::{
-    Connector,
-    audio_input::{AudioInput, BufferedAudioInput},
-};
+use violet_core::{Connector, audio_input::AudioInput};
 
-/// The actual audio input that the renderer gets samples from.
-pub struct AudioDecoder<T> {
-    reader: MultiRingReader<T>,
-    sample_rate: u32,
-}
-
-/// Stores metadata about the audio stream.
-/// Splits into an `AudioDecoder` and `AudioDecoderTask`.
-pub struct AudioDecoderInfo {
+pub struct AudioDecoder<T>
+where
+    T: AudioDecoderSample,
+{
     format_reader: Box<dyn FormatReader>,
     decoder: Box<dyn Decoder>,
     track_id: u32,
+    current_buffer: AudioBuffer<T>,
+    frame_in_buffer: usize,
+    ended: bool,
 }
 
-impl AudioDecoderInfo {
-    /// Creates an `AudioDecoderInfo` using a Symphonia media source.
+impl<T> AudioDecoder<T>
+where
+    T: AudioDecoderSample,
+{
+    /// Creates an `AudioDecoder` using a Symphonia media source.
     pub fn new(file: impl MediaSource + 'static) -> Self {
         let file = Box::new(file);
         let mss = MediaSourceStream::new(file, Default::default());
@@ -82,19 +65,25 @@ impl AudioDecoderInfo {
             .format(&hint, mss, &format_opts, &metadata_opts)
             .unwrap();
 
-        let format = probed.format;
+        let mut format_reader = probed.format;
 
-        let track = format.default_track().unwrap();
+        let track = format_reader.default_track().unwrap();
 
-        let decoder = symphonia::default::get_codecs()
+        let mut decoder = symphonia::default::get_codecs()
             .make(&track.codec_params, &decoder_opts)
             .unwrap();
 
         let track_id = track.id;
+
+        let current_buffer = read_packet(&mut format_reader, &mut decoder, track_id).unwrap();
+
         Self {
-            format_reader: format,
+            format_reader,
             decoder,
             track_id,
+            current_buffer,
+            frame_in_buffer: 0,
+            ended: false,
         }
     }
     /// Returns the sample rate of the audio stream.
@@ -114,107 +103,72 @@ impl AudioDecoderInfo {
     pub fn duration(&self) -> u64 {
         self.decoder.as_ref().codec_params().n_frames.unwrap()
     }
-    /// Splits this struct into an `AudioDecoder` and `AudioDecoderTask`.
-    ///
-    /// The resulting `AudioDecoder` is the input you will give the renderer,
-    /// and the `AudioDecoderTask` allows you to spawn the decoder task that
-    /// can decode the stream on a seperate thread.
-    pub fn into_pair<T>(
-        self,
-        read_len: usize,
-        write_len: usize,
-    ) -> (AudioDecoder<T>, AudioDecoderTask<T>)
-    where
-        T: Copy + Default,
-    {
-        let channels = self.decoder.codec_params().channels.unwrap().count();
-        let sample_rate = self.decoder.codec_params().sample_rate.unwrap();
-        let (reader, writer) = multi_ring_buf(channels, read_len, write_len);
-        // Advance positions by read capacity to start with full delay
-        // length available:
-        reader.advance_read_position_by(read_len);
-        writer.advance_write_position_by(read_len);
 
-        let info = self;
-        let task = AudioDecoderTask { writer, info };
-        let connection = AudioDecoder {
-            reader,
-            sample_rate,
-        };
-        (connection, task)
+    fn read_next_packet(&mut self) {
+        let maybe_buffer = read_packet(&mut self.format_reader, &mut self.decoder, self.track_id);
+
+        if let Some(buffer) = maybe_buffer {
+            self.current_buffer = buffer;
+            self.frame_in_buffer = 0;
+        } else {
+            self.ended = true;
+        }
     }
 }
 
-/// Contains data necessary to start the audio decoder process.
-pub struct AudioDecoderTask<T> {
-    writer: MultiRingWriter<T>,
-    info: AudioDecoderInfo,
-}
-
-impl<T> AudioDecoderTask<T>
+fn read_packet<T>(
+    format_reader: &mut Box<dyn FormatReader>,
+    decoder: &mut Box<dyn Decoder>,
+    track_id: u32,
+) -> Option<AudioBuffer<T>>
 where
-    T: AudioDecoderSample + 'static,
+    T: AudioDecoderSample,
 {
-    /// Returns the inner `AudioDecoderInfo`.
-    pub fn info(&self) -> &AudioDecoderInfo {
-        &self.info
+    while let Ok(packet) = format_reader.next_packet() {
+        if packet.track_id() != track_id {
+            continue;
+        }
+
+        let unconverted = decoder.decode(&packet).unwrap();
+        let mut buf = unconverted.make_equivalent::<T>();
+        unconverted.convert(&mut buf);
+
+        return Some(buf);
     }
-    /// Spawns a standard library thread that runs the audio decoder process.
-    pub fn spawn_and_run(
-        self,
-        block_size: usize,
-        cancelled: impl Fn() -> bool + Send + 'static,
-        paused: impl Fn() -> bool + Send + 'static,
-    ) -> JoinHandle<()> {
-        std::thread::spawn(move || self.run(block_size, cancelled, paused))
-    }
-    /// Run the audio decoder process on the current thread.
-    /// Running the audio decoder process on the same thread as the renderer
-    /// will likely not give desired results.
-    pub fn run(self, block_size: usize, cancelled: impl Fn() -> bool, paused: impl Fn() -> bool) {
-        audio_decoder_process(
-            self.writer,
-            self.info.decoder,
-            self.info.track_id,
-            self.info.format_reader,
-            cancelled,
-            paused,
-            block_size,
-        );
-    }
+    None
 }
 
-impl<T: Default + Copy> Connector for AudioDecoder<T> {
-    fn advance(&mut self, frames: usize) {
-        self.reader.advance_read_position_by(frames);
-    }
-
+impl<T> Connector for AudioDecoder<T>
+where
+    T: AudioDecoderSample,
+{
     fn frames_available(&self) -> Option<usize> {
-        let reads_available = self.reader.real_reads_available();
-        if (reads_available == 0) && self.reader.is_closed() {
+        if self.ended {
             return None;
         }
-        Some(reads_available)
+        Some(self.current_buffer.frames() - self.frame_in_buffer)
+    }
+
+    fn advance(&mut self, frames: usize) {
+        self.frame_in_buffer += frames;
+        if self.frame_in_buffer >= self.current_buffer.frames() {
+            self.read_next_packet()
+        }
     }
 }
-impl<T: Default + Copy> AudioInput for AudioDecoder<T> {
+
+impl<T: AudioDecoderSample> AudioInput for AudioDecoder<T> {
     type Sample = T;
 
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample {
-        self.reader.read_forward(channel, frame)
+        let frame = self.frame_in_buffer + frame;
+        self.current_buffer.chan(channel)[frame]
     }
     fn channel_count(&self) -> usize {
-        self.reader.channels()
+        self.channels()
     }
     fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
-}
-impl<T: Default + Copy> BufferedAudioInput for AudioDecoder<T> {
-    fn buffered_sample(&self, channel: usize, frame: usize, sample: usize) -> Self::Sample {
-        let frame = frame.cast_signed();
-        let index = frame.saturating_sub_unsigned(sample);
-        self.reader.read_relative(channel, index)
+        self.sample_rate()
     }
 }
 
@@ -235,47 +189,3 @@ where
 }
 impl AudioDecoderSample for f32 {}
 impl AudioDecoderSample for f64 {}
-
-fn audio_decoder_process<T>(
-    writer: MultiRingWriter<T>,
-    mut decoder: Box<dyn Decoder>,
-    track_id: u32,
-    mut format_reader: Box<dyn FormatReader>,
-    cancelled: impl Fn() -> bool,
-    _paused: impl Fn() -> bool,
-    block_size: usize,
-) where
-    T: AudioDecoderSample,
-{
-    let total_channels = decoder.codec_params().channels.unwrap().count();
-    let track_id = track_id;
-    while let Ok(packet) = format_reader.next_packet() {
-        if packet.track_id() != track_id {
-            continue;
-        }
-        if cancelled() {
-            break;
-        }
-
-        let unconverted = decoder.decode(&packet).unwrap();
-        let mut buf = unconverted.make_equivalent::<T>();
-        unconverted.convert(&mut buf);
-
-        let mut frame_in_packet = 0;
-        let packet_duration = packet.block_dur() as usize;
-        while frame_in_packet < packet_duration {
-            let frames_left_in_packet = packet_duration - frame_in_packet;
-            let ideal_writes = frames_left_in_packet.min(block_size);
-            let available_writes = writer.real_writes_available();
-            let writes = ideal_writes.min(available_writes);
-            for channel in 0..total_channels {
-                for i in 0..writes {
-                    let sample = buf.chan(channel)[frame_in_packet + i];
-                    writer.write_forward(channel, i, sample);
-                }
-            }
-            frame_in_packet += writes;
-            writer.advance_write_position_by(writes);
-        }
-    }
-}
