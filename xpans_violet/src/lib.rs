@@ -35,6 +35,9 @@ pub mod audio_input {
     #[cfg(feature = "interpolation")]
     pub use violet_interpolation as interpolation;
 
+    #[cfg(feature = "audio_buffer")]
+    pub use violet_audio_buffer as audio_buffer;
+
     #[cfg(feature = "audio_decoder")]
     pub use violet_audio_decoder as audio_decoder;
 }
