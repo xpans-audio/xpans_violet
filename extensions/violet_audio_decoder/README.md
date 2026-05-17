@@ -12,25 +12,13 @@ Symphonia as well.
 ## Example
 ```rust
 use std::fs::File;
-use violet_audio_decoder::AudioDecoderInfo;
+use violet_audio_decoder::AudioDecoder;
 
+// Open the audio file:
 let file = File::open("audio.wav").unwrap();
-let decoder_info = AudioDecoderInfo::new(file);
 
-// The amount of samples the audio buffer will retain (i.e. for delayed samples)
-let read_capacity = 64;
-
-// The amount of samples the decoder process will be able to write ahead of the
-// renderer.
-let write_capacity = 64;
-
-let (audio_decoder, audio_decoder_task) =
-    decoder_info.into_pair::<f32>(read_capacity, write_capacity);
-
-// Run the decoder process on a new thread.
-// We use closures that always return false, so this process will not be
-// pausable or cancelable.
-audio_decoder_task.spawn_and_run(8, || false, || false);
+// Create an audio decoder that decodes to `f32` samples:
+let audio_decoder = AudioDecoder::<f32>::new(file);
 
 // You would then use `audio_decoder` as the audio input for the renderer.
 ```

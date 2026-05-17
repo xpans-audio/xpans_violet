@@ -12,4 +12,3 @@ authors = ["Ben Seigler"]
 [dependencies]
 violet_core = { version = "0.1.0", path = "../../violet_core" }
 symphonia = { version = "0.5.5" }
-wreath = "0.1.0"
