@@ -88,7 +88,7 @@ where
     }
     /// Returns the sample rate of the audio stream.
     pub fn sample_rate(&self) -> u32 {
-        self.decoder.as_ref().codec_params().sample_rate.unwrap() as u32
+        self.decoder.as_ref().codec_params().sample_rate.unwrap()
     }
     /// Returns the number of channels in the audio stream.
     pub fn channels(&self) -> usize {

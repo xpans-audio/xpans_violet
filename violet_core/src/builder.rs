@@ -15,6 +15,19 @@ pub struct RendererBuilder<Interpreter, Processor, AudioIn, SpatialIn, AudioOut>
     spatial_input: Option<SpatialIn>,
     audio_output: Option<AudioOut>,
 }
+impl<Interpreter, Processor, AudioIn, SpatialIn, AudioOut> Default
+    for RendererBuilder<Interpreter, Processor, AudioIn, SpatialIn, AudioOut>
+{
+    fn default() -> Self {
+        Self {
+            interpreter: None,
+            processor: None,
+            audio_input: None,
+            spatial_input: None,
+            audio_output: None,
+        }
+    }
+}
 
 impl<Interpreter, Processor, AudioIn, SpatialIn, AudioOut>
     RendererBuilder<Interpreter, Processor, AudioIn, SpatialIn, AudioOut>
@@ -28,13 +41,7 @@ where
 {
     /// Creates a new `RendererBuilder`.
     pub fn new() -> Self {
-        Self {
-            interpreter: None,
-            processor: None,
-            audio_input: None,
-            spatial_input: None,
-            audio_output: None,
-        }
+        Self::default()
     }
     /**
     Sets the spatial input of the renderer.
