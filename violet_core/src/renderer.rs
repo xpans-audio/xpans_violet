@@ -76,7 +76,7 @@ where
     */
     pub fn render_frame(&mut self) -> Option<()> {
         self.render_frames(1)
-            .and_then(|frames| (frames == 1).then(|| ()))
+            .and_then(|frames| (frames == 1).then_some(()))
     }
     /**
     Tries to render the given amount of frames and returns the amount of
@@ -143,7 +143,7 @@ where
 
     /// Returns an immutable reference to the audio input.
     pub fn audio_input(&self) -> &AudioIn {
-        &self.audio_input.input()
+        self.audio_input.input()
     }
     /// Returns a mutable reference to the audio input.
     pub fn audio_input_mut(&mut self) -> &mut AudioIn {
@@ -175,7 +175,7 @@ where
     }
     /// Returns an immutable reference to the audio output.
     pub fn audio_output(&self) -> &AudioOut {
-        &self.audio_output.output()
+        self.audio_output.output()
     }
     /// Returns a mutable reference to the audio output.
     pub fn audio_output_mut(&mut self) -> &mut AudioOut {

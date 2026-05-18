@@ -96,5 +96,5 @@ where
     }
 }
 fn lerp<T: Float>(v0: T, v1: T, t: T) -> T {
-    return (T::one() - t) * v0 + t * v1;
+    (T::one() - t) * v0 + t * v1
 }

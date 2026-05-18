@@ -45,7 +45,7 @@ where
 
 impl<Input: AudioInput> SampleRate for AudioInputSocket<Input> {
     fn sample_rate(&self) -> u32 {
-        self.input().sample_rate() as u32
+        self.input().sample_rate()
     }
 }
 
