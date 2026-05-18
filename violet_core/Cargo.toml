@@ -6,7 +6,7 @@ description = "The core crate of xpans Violet. Used by extensions for Violet and
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 homepage = "https://xpans.audio"
-repository = "https://github.com/xpans-audio/xpans_violet.git"
+repository = "https://github.com/xpans-audio/violet.git"
 authors = ["Ben Seigler"]
 
 [dependencies]
