@@ -13,6 +13,9 @@ pub trait AudioOutput: Connector {
     */
     fn set_sample(&mut self, channel: usize, frame: usize, value: Self::Sample);
 
+    /// The sample rate of the audio output.
+    fn sample_rate(&self) -> u32;
+
     /// The number of output channels this output supports.
     fn channel_count(&self) -> usize;
 }
@@ -24,6 +27,10 @@ where
 
     fn set_sample(&mut self, channel: usize, frame: usize, value: Self::Sample) {
         self.as_mut().set_sample(channel, frame, value);
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.as_ref().sample_rate()
     }
 
     fn channel_count(&self) -> usize {

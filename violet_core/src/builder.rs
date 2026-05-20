@@ -127,7 +127,7 @@ where
         let audio_sample_rate = audio.sample_rate();
         let spatial_sample_rate = spatial.sample_rate();
         if audio_sample_rate != spatial_sample_rate {
-            return Err(RendererBuildError::SampleRateMismatch);
+            return Err(RendererBuildError::InputSampleRateMismatch);
         }
         Ok(())
     }
@@ -145,6 +145,15 @@ where
         if processor_samples != output_channels {
             return Err(RendererBuildError::OutputChannelMismatch);
         }
+
+        // These unwraps should be fine since we check if these are `Some`
+        // before this.
+        let input_sample_rate = self.audio_input.as_ref().unwrap().sample_rate();
+        let output_sample_rate = self.audio_output.as_ref().unwrap().sample_rate();
+
+        if input_sample_rate != output_sample_rate {
+            return Err(RendererBuildError::OutputSampleRateMismatch);
+        }
         Ok(())
     }
 }
@@ -161,7 +170,8 @@ pub enum RendererBuildError {
     MissingAudioInput,
     MissingSpatialInput,
     MissingAudioOutput,
-    SampleRateMismatch,
+    InputSampleRateMismatch,
+    OutputSampleRateMismatch,
     InputChannelMismatch,
     OutputChannelMismatch,
 }
