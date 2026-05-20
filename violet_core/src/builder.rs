@@ -117,18 +117,17 @@ where
         })
     }
     fn inputs_compatible(&self) -> Result<(), RendererBuildError> {
-        let audio_channels = self
-            .audio_input
-            .as_ref()
-            .ok_or(MISSING_AUDIO_INPUT)?
-            .channel_count();
-        let source_count = self
-            .spatial_input
-            .as_ref()
-            .ok_or(MISSING_SPATIAL_INPUT)?
-            .source_count();
+        let audio = self.audio_input.as_ref().ok_or(MISSING_AUDIO_INPUT)?;
+        let spatial = self.spatial_input.as_ref().ok_or(MISSING_SPATIAL_INPUT)?;
+        let audio_channels = audio.channel_count();
+        let source_count = spatial.source_count();
         if audio_channels != source_count {
             return Err(RendererBuildError::InputChannelMismatch);
+        }
+        let audio_sample_rate = audio.sample_rate();
+        let spatial_sample_rate = spatial.sample_rate();
+        if audio_sample_rate != spatial_sample_rate {
+            return Err(RendererBuildError::SampleRateMismatch);
         }
         Ok(())
     }
@@ -162,6 +161,7 @@ pub enum RendererBuildError {
     MissingAudioInput,
     MissingSpatialInput,
     MissingAudioOutput,
+    SampleRateMismatch,
     InputChannelMismatch,
     OutputChannelMismatch,
 }
