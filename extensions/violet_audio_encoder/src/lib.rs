@@ -77,6 +77,7 @@ impl AudioEncoderInfo {
         let (ring_reader, ring_writer) = ring_buf(1, write_capacity);
         let audio_output = AudioEncoder {
             writer: ring_writer,
+            sample_rate: self.sample_rate,
             channels: self.channels,
         };
         let task = AudioEncoderTask {
@@ -90,6 +91,7 @@ impl AudioEncoderInfo {
 /// Contains data necessary to start the audio encoder process.
 pub struct AudioEncoder<T> {
     writer: RingWriter<T>,
+    sample_rate: u32,
     channels: u16,
 }
 
@@ -120,6 +122,10 @@ impl<T: Default + Copy + AddAssign> AudioOutput for AudioEncoder<T> {
         let index = interleaved_index(self.channel_count(), frame, channel);
         let sample = self.writer.mutate_forward(index);
         *sample += value;
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     fn channel_count(&self) -> usize {
