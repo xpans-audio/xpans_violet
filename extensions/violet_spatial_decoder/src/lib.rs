@@ -22,6 +22,7 @@ where
     Scene: AsRef<SpatialSampleMap<usize, u16, T>>,
 {
     scene: Scene,
+    sample_rate: u32,
     source_count: usize,
     duration: usize,
     phantom_data: PhantomData<T>,
@@ -38,9 +39,10 @@ where
     The source count and duration (in samples) of the scene must also be
     given.
     */
-    pub fn new(scene: Scene, source_count: usize, duration: usize) -> Self {
+    pub fn new(scene: Scene, sample_rate: u32, source_count: usize, duration: usize) -> Self {
         Self {
             scene,
+            sample_rate,
             source_count,
             duration,
             phantom_data: PhantomData,
@@ -60,6 +62,7 @@ where
         let (reader, writer) = ring_buf(1, write_capacity);
         let decoder = SpatialDecoder {
             reader,
+            sample_rate: self.sample_rate,
             source_count: self.source_count,
         };
         let task = SpatialDecoderTask { writer, info: self };
@@ -121,6 +124,7 @@ where
 /// The actual spatial input that the renderer gets spatial data from.
 pub struct SpatialDecoder<T> {
     reader: RingReader<Source<T>>,
+    sample_rate: u32,
     source_count: usize,
 }
 
@@ -145,6 +149,10 @@ impl<T: Default + Copy> SpatialInput for SpatialDecoder<T> {
         let frame = frame * self.source_count;
         let index = frame + source;
         self.reader.read_forward(index)
+    }
+
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     fn source_count(&self) -> usize {
