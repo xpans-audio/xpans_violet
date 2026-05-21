@@ -23,7 +23,7 @@ where
 {
     scene: Scene,
     sample_rate: u32,
-    source_count: usize,
+    channel_count: usize,
     duration: usize,
     phantom_data: PhantomData<T>,
 }
@@ -39,11 +39,11 @@ where
     The source count and duration (in samples) of the scene must also be
     given.
     */
-    pub fn new(scene: Scene, sample_rate: u32, source_count: usize, duration: usize) -> Self {
+    pub fn new(scene: Scene, sample_rate: u32, channel_count: usize, duration: usize) -> Self {
         Self {
             scene,
             sample_rate,
-            source_count,
+            channel_count,
             duration,
             phantom_data: PhantomData,
         }
@@ -63,7 +63,7 @@ where
         let decoder = SpatialDecoder {
             reader,
             sample_rate: self.sample_rate,
-            source_count: self.source_count,
+            channel_count: self.channel_count,
         };
         let task = SpatialDecoderTask { writer, info: self };
         (decoder, task)
@@ -97,7 +97,7 @@ where
     pub fn run(self, cancelled: impl Fn() -> bool, paused: impl Fn() -> bool) {
         spatial_decoder_process(
             self.info.scene,
-            self.info.source_count,
+            self.info.channel_count,
             self.info.duration,
             self.writer,
             cancelled,
@@ -125,17 +125,23 @@ where
 pub struct SpatialDecoder<T> {
     reader: RingReader<Source<T>>,
     sample_rate: u32,
-    source_count: usize,
+    channel_count: usize,
 }
 
 impl<T: Default + Copy> Connector for SpatialDecoder<T> {
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+    fn channel_count(&self) -> usize {
+        self.channel_count
+    }
     fn advance(&mut self, frames: usize) {
         self.reader
-            .advance_read_position_by(frames * self.source_count);
+            .advance_read_position_by(frames * self.channel_count);
     }
 
     fn frames_available(&self) -> Option<usize> {
-        let reads_available = self.reader.real_reads_available() / self.source_count;
+        let reads_available = self.reader.real_reads_available() / self.channel_count;
         if (reads_available == 0) && self.reader.is_closed() {
             return None;
         }
@@ -146,17 +152,9 @@ impl<T: Default + Copy> SpatialInput for SpatialDecoder<T> {
     type Scalar = T;
 
     fn source(&self, source: usize, frame: usize) -> Source<Self::Scalar> {
-        let frame = frame * self.source_count;
+        let frame = frame * self.channel_count;
         let index = frame + source;
         self.reader.read_forward(index)
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
-
-    fn source_count(&self) -> usize {
-        self.source_count
     }
 }
 

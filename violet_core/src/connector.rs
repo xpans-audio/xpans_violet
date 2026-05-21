@@ -14,6 +14,16 @@ pub trait Connector {
     per channel that this connector has the capacity to receive.
     */
     fn frames_available(&self) -> Option<usize>;
+    /// The sample rate of the connector.
+    fn sample_rate(&self) -> u32;
+    /**
+    The number of channels the connector has.
+
+    For inputs, this should be equal to the number of audio sources within the
+    scene. For outputs, this should be equal to the sample processor's output
+    channels.
+    */
+    fn channel_count(&self) -> usize;
     /**
     This method is called on the connector whenever the renderer has
     rendered a chunk of frames.
@@ -51,6 +61,12 @@ where
     }
     fn post_frame(&mut self, frame: usize) {
         self.as_mut().post_frame(frame);
+    }
+    fn sample_rate(&self) -> u32 {
+        self.as_ref().sample_rate()
+    }
+    fn channel_count(&self) -> usize {
+        self.as_ref().channel_count()
     }
     fn advance(&mut self, frames: usize) {
         self.as_mut().advance(frames);

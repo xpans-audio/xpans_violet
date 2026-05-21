@@ -96,6 +96,14 @@ pub struct AudioEncoder<T> {
 }
 
 impl<T: Default + Copy + AddAssign> Connector for AudioEncoder<T> {
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn channel_count(&self) -> usize {
+        self.channels as usize
+    }
+
     fn pre_frame(&mut self, frame: usize) {
         for channel in 0..self.channel_count() {
             let index = interleaved_index(self.channel_count(), frame, channel);
@@ -122,14 +130,6 @@ impl<T: Default + Copy + AddAssign> AudioOutput for AudioEncoder<T> {
         let index = interleaved_index(self.channel_count(), frame, channel);
         let sample = self.writer.mutate_forward(index);
         *sample += value;
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
-
-    fn channel_count(&self) -> usize {
-        self.channels as usize
     }
 }
 fn interleaved_index(channel_count: usize, frame: usize, channel: usize) -> usize {

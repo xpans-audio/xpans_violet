@@ -84,6 +84,14 @@ impl<S> Connector for AudioBuffer<S>
 where
     S: Copy + Default,
 {
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn channel_count(&self) -> usize {
+        self.reader.channels()
+    }
+
     fn frames_available(&self) -> Option<usize> {
         let reads_available = self.reader.real_reads_available();
         if (reads_available == 0) && self.reader.is_closed() {
@@ -105,14 +113,6 @@ where
 
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample {
         self.reader.read_forward(channel, frame)
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.sample_rate
-    }
-
-    fn channel_count(&self) -> usize {
-        self.reader.channels()
     }
 }
 

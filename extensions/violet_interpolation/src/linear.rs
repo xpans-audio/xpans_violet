@@ -42,6 +42,14 @@ impl<In: AudioInput> Connector for LinearInterpolator<In>
 where
     In: BufferedAudioInput,
 {
+    fn sample_rate(&self) -> u32 {
+        self.input.sample_rate()
+    }
+
+    fn channel_count(&self) -> usize {
+        self.input.channel_count()
+    }
+
     fn advance(&mut self, frames: usize) {
         self.input.advance(frames);
     }
@@ -58,14 +66,6 @@ where
 
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample {
         self.input.sample(channel, frame)
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.input.sample_rate()
-    }
-
-    fn channel_count(&self) -> usize {
-        self.input.channel_count()
     }
 }
 impl<In> BufferedAudioInput for LinearInterpolator<In>

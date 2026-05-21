@@ -12,10 +12,6 @@ pub trait SpatialInput: Connector {
     `advance()` was called.
     */
     fn source(&self, source: usize, frame: usize) -> Source<Self::Scalar>;
-    /// The sample rate of the spatial input.
-    fn sample_rate(&self) -> u32;
-    /// The number of audio sources the spatial input is providing.
-    fn source_count(&self) -> usize;
 }
 impl<T> SpatialInput for Box<T>
 where
@@ -25,13 +21,5 @@ where
 
     fn source(&self, source: usize, frame: usize) -> Source<Self::Scalar> {
         self.as_ref().source(source, frame)
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.as_ref().sample_rate()
-    }
-
-    fn source_count(&self) -> usize {
-        self.as_ref().source_count()
     }
 }

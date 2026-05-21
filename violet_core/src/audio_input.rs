@@ -13,13 +13,6 @@ pub trait AudioInput: Connector {
     `advance()` was called.
     */
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample;
-    /// The sample rate of the audio input.
-    fn sample_rate(&self) -> u32;
-    /**
-    The number of audio channels the audio input is providing.
-    This should be equal to the number of audio sources within the scene.
-    */
-    fn channel_count(&self) -> usize;
 }
 impl<T> AudioInput for Box<T>
 where
@@ -29,14 +22,6 @@ where
 
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample {
         self.as_ref().sample(channel, frame)
-    }
-
-    fn sample_rate(&self) -> u32 {
-        self.as_ref().sample_rate()
-    }
-
-    fn channel_count(&self) -> usize {
-        self.as_ref().channel_count()
     }
 }
 

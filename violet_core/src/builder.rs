@@ -120,8 +120,8 @@ where
         let audio = self.audio_input.as_ref().ok_or(MISSING_AUDIO_INPUT)?;
         let spatial = self.spatial_input.as_ref().ok_or(MISSING_SPATIAL_INPUT)?;
         let audio_channels = audio.channel_count();
-        let source_count = spatial.source_count();
-        if audio_channels != source_count {
+        let spatial_channels = spatial.channel_count();
+        if audio_channels != spatial_channels {
             return Err(RendererBuildError::InputChannelMismatch);
         }
         let audio_sample_rate = audio.sample_rate();
