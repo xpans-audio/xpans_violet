@@ -142,6 +142,13 @@ impl<T> Connector for AudioDecoder<T>
 where
     T: AudioDecoderSample,
 {
+    fn channel_count(&self) -> usize {
+        self.channels()
+    }
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate()
+    }
+
     fn frames_available(&self) -> Option<usize> {
         if self.ended {
             return None;
@@ -163,12 +170,6 @@ impl<T: AudioDecoderSample> AudioInput for AudioDecoder<T> {
     fn sample(&self, channel: usize, frame: usize) -> Self::Sample {
         let frame = self.frame_in_buffer + frame;
         self.current_buffer.chan(channel)[frame]
-    }
-    fn channel_count(&self) -> usize {
-        self.channels()
-    }
-    fn sample_rate(&self) -> u32 {
-        self.sample_rate()
     }
 }
 
