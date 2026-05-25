@@ -296,7 +296,7 @@ fn buffer_process<I, S>(
         }
         let frames = frames.min(writer.real_writes_available()).min(block_size);
         for frame in 0..frames {
-            for channel in 0..inner.channel_count() {
+            for channel in 0..writer.channels() {
                 let sample = inner.sample(channel, frame);
                 writer.write_forward(channel, frame, sample);
             }
