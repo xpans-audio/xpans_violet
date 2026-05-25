@@ -22,6 +22,7 @@ where
         self,
         read_capacity: usize,
         write_capacity: usize,
+        lookahead_length: usize,
     ) -> (AudioBuffer<S>, AudioBufferTask<Self, S>);
 }
 
@@ -34,8 +35,9 @@ where
         self,
         read_capacity: usize,
         write_capacity: usize,
+        lookahead_length: usize,
     ) -> (AudioBuffer<S>, AudioBufferTask<Self, S>) {
-        AudioBuffer::new(self, read_capacity, write_capacity)
+        AudioBuffer::new(self, read_capacity, write_capacity, lookahead_length)
     }
 }
 
@@ -46,6 +48,7 @@ where
 {
     reader: MultiRingReader<S>,
     sample_rate: u32,
+    lookahead_length: usize,
 }
 
 impl<S> AudioBuffer<S>
@@ -56,12 +59,15 @@ where
         inner: I,
         read_capacity: usize,
         write_capacity: usize,
+        lookahead_length: usize,
     ) -> (Self, AudioBufferTask<I, S>)
     where
         I: AudioInput<Sample = S> + Sized,
     {
         let channels = inner.channel_count();
         let sample_rate = inner.sample_rate();
+
+        let write_capacity = write_capacity.max(lookahead_length);
 
         let (reader, writer) = multi_ring_buf(channels, read_capacity, write_capacity);
 
@@ -73,8 +79,9 @@ where
         let input = Self {
             reader,
             sample_rate,
+            lookahead_length,
         };
-        let task = AudioBufferTask::new(inner, writer);
+        let task = AudioBufferTask::new(inner, writer, lookahead_length);
 
         (input, task)
     }
@@ -93,7 +100,11 @@ where
     }
 
     fn frames_available(&self) -> Option<usize> {
-        let reads_available = self.reader.real_reads_available();
+        let reads_available = self
+            .reader
+            .real_reads_available()
+            .saturating_sub(self.lookahead_length);
+
         if (reads_available == 0) && self.reader.is_closed() {
             return None;
         }
@@ -143,9 +154,13 @@ where
     I: AudioInput<Sample = S>,
     S: Copy + Default,
 {
-    fn new(inner: I, writer: MultiRingWriter<S>) -> Self {
+    fn new(inner: I, writer: MultiRingWriter<S>, lookahead_length: usize) -> Self {
         Self {
-            task: PrivateTask { inner, writer },
+            task: PrivateTask {
+                inner,
+                writer,
+                lookahead_length,
+            },
             canceled: None,
             paused: None,
         }
@@ -265,6 +280,7 @@ where
 {
     inner: I,
     writer: MultiRingWriter<S>,
+    lookahead_length: usize,
 }
 
 impl<I, S> PrivateTask<I, S>
@@ -273,13 +289,21 @@ where
     S: Copy + Default,
 {
     fn run(self, block_size: usize, canceled: impl Fn() -> bool, paused: impl Fn() -> bool) {
-        buffer_process(self.inner, self.writer, block_size, canceled, paused);
+        buffer_process(
+            self.inner,
+            self.writer,
+            self.lookahead_length,
+            block_size,
+            canceled,
+            paused,
+        );
     }
 }
 
 fn buffer_process<I, S>(
     mut inner: I,
     writer: MultiRingWriter<S>,
+    lookahead_length: usize,
     block_size: usize,
     canceled: impl Fn() -> bool,
     paused: impl Fn() -> bool,
@@ -303,5 +327,19 @@ fn buffer_process<I, S>(
         }
         writer.advance_write_position_by(frames);
         inner.advance(frames);
+    }
+
+    // Write silence to fill the lookahead once the inner input has ended:
+    let mut final_lookahead_frames = 0;
+    while final_lookahead_frames < lookahead_length {
+        let frames = writer.real_writes_available();
+        for frame in 0..frames {
+            for channel in 0..writer.channels() {
+                let sample = S::default();
+                writer.write_forward(channel, frame, sample);
+            }
+        }
+        writer.advance_write_position_by(frames);
+        final_lookahead_frames += frames;
     }
 }
