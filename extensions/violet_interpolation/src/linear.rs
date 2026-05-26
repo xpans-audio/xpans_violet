@@ -72,8 +72,16 @@ impl<In> BufferedAudioInput for LinearInterpolator<In>
 where
     In: BufferedAudioInput,
 {
-    fn buffered_sample(&self, channel: usize, frame: usize, sample: usize) -> Self::Sample {
+    fn buffered_sample(&self, channel: usize, frame: usize, sample: isize) -> Self::Sample {
         self.input.buffered_sample(channel, frame, sample)
+    }
+
+    fn max_delay_length(&self) -> usize {
+        self.input.max_delay_length()
+    }
+
+    fn max_lookahead_length(&self) -> usize {
+        self.input.max_lookahead_length()
     }
 }
 impl<In> FractionalAudioInput for LinearInterpolator<In>
@@ -89,8 +97,8 @@ where
     ) -> Self::Sample {
         let floor = sample.floor().as_();
         let ceil = sample.ceil().as_();
-        let floor_sample = self.buffered_sample(channel, frame, floor);
-        let ceil_sample = self.buffered_sample(channel, frame, ceil);
+        let floor_sample = self.delayed_sample(channel, frame, floor);
+        let ceil_sample = self.delayed_sample(channel, frame, ceil);
         let fract = sample.fract();
         lerp(floor_sample, ceil_sample, fract)
     }

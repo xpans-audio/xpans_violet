@@ -163,6 +163,9 @@ const MISSING_PROCESSOR: RendererBuildError = RendererBuildError::MissingProcess
 const MISSING_AUDIO_INPUT: RendererBuildError = RendererBuildError::MissingAudioInput;
 const MISSING_AUDIO_OUTPUT: RendererBuildError = RendererBuildError::MissingAudioOutput;
 const MISSING_SPATIAL_INPUT: RendererBuildError = RendererBuildError::MissingSpatialInput;
+
+// TODO: Validate audio input and processor delay length compatibility
+// and error when invalid.
 #[derive(Debug, Clone, Copy)]
 pub enum RendererBuildError {
     MissingInterpreter,

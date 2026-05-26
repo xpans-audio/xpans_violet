@@ -54,7 +54,7 @@ where
     Input: BufferedAudioInput,
 {
     fn integer_sample(&self, index: usize) -> Input::Sample {
-        self.input.buffered_sample(self.channel, self.frame, index)
+        self.input.delayed_sample(self.channel, self.frame, index)
     }
 }
 impl<Input> FractionalInput<Input::Sample, Input::Sample> for AudioInputSocket<Input>

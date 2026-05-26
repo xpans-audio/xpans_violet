@@ -2,7 +2,7 @@
 Adds a buffered audio input to xpans Violet that can fetch audio samples from
 the given input on a separate thread from the renderer.
 */
-use std::thread::JoinHandle;
+use std::{ops::Add, thread::JoinHandle};
 
 use violet_core::{
     Connector,
@@ -128,10 +128,17 @@ where
 }
 
 impl<T: Default + Copy> BufferedAudioInput for AudioBuffer<T> {
-    fn buffered_sample(&self, channel: usize, frame: usize, sample: usize) -> Self::Sample {
-        let frame = frame.cast_signed();
-        let index = frame.saturating_sub_unsigned(sample);
+    fn buffered_sample(&self, channel: usize, frame: usize, sample: isize) -> Self::Sample {
+        let index = frame.cast_signed().add(sample);
         self.reader.read_relative(channel, index)
+    }
+
+    fn max_delay_length(&self) -> usize {
+        self.reader.read_capacity()
+    }
+
+    fn max_lookahead_length(&self) -> usize {
+        self.lookahead_length
     }
 }
 
